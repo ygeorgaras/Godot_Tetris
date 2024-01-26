@@ -64,16 +64,20 @@ var piece_type
 var next_piece_type
 var rotation_index : int = 0
 var active_piece : Array
+var stored_piece
+var stored_piece_type
 
 #game variables 
 var score : int
 const REWARD : int = 100
 var game_running : bool
+var just_stored : bool
 
 #tilemap variables
 var tile_id : int = 0
 var piece_atlas : Vector2i
 var next_piece_atlas : Vector2i
+var stored_piece_atlas : Vector2i
 
 #layer variables
 var board_layer : int = 0
@@ -94,23 +98,29 @@ func new_game():
 	#clear everything
 	clear_piece()
 	clear_board()
-	clear_panel()
+	clear_next_panel()
+	clear_storage_panel()
 	piece_type = pick_piece()#select first piece
 	piece_atlas = Vector2i(shapes_full.find(piece_type), 0)#color of piece
 	next_piece_type = pick_piece()
 	next_piece_atlas = Vector2i(shapes_full.find(next_piece_type), 0)
+	stored_piece = null
+	stored_piece_type = null
 	create_piece()
 
 func _process(delta):
 	if game_running:
 		if Input.is_action_pressed("ui_left"):
-			steps[0] += 10
+			steps[0] += 15
 		elif Input.is_action_pressed("ui_right"):
-			steps[1] += 10
+			steps[1] += 15
 		elif Input.is_action_pressed("ui_down"):
 			steps[2] += 10
 		if Input.is_action_just_released("ui_up"):
 			rotate_piece()
+		if Input.is_action_just_released("store_shape"):
+			store_shape()
+
 		#apply downward movement each frames
 		steps[2] += speed
 		#move the piece
@@ -157,13 +167,20 @@ func move_piece(dir):
 			piece_atlas = next_piece_atlas
 			next_piece_type = pick_piece()
 			next_piece_atlas = Vector2i(shapes_full.find(next_piece_type), 0)
-			clear_panel()
+			clear_next_panel()
 			create_piece()
 			check_game_over()
 
-func clear_panel():
+			
+
+func clear_next_panel():
 	for i in range(14, 19):
 		for j in range(5, 9):
+			erase_cell(active_layer, Vector2i(i,j))
+
+func clear_storage_panel():
+	for i in range(14, 19):
+		for j in range(12, 17):
 			erase_cell(active_layer, Vector2i(i,j))
 			
 func rotate_piece():
@@ -173,6 +190,51 @@ func rotate_piece():
 		active_piece = piece_type[rotation_index]
 		draw_piece(active_piece, cur_pos, piece_atlas)
 	
+func store_shape():
+	if stored_piece == null:
+		#stores and draws piece in stored piece
+		stored_piece = active_piece
+		stored_piece_type = piece_type
+		stored_piece_atlas = piece_atlas
+		draw_piece(piece_type[0], Vector2i(15,13), piece_atlas)
+		
+		#sets piece to next piece type and atlas
+		piece_type = next_piece_type
+		piece_atlas = next_piece_atlas
+		
+		#choses next piece and places in next piece box
+		next_piece_type = pick_piece()
+		next_piece_atlas = Vector2i(shapes_full.find(next_piece_type), 0)
+		
+		#clears side panel for next shape
+		clear_next_panel()
+		clear_piece()
+		create_piece()
+	else:
+		#stores current piece
+		var curr_piece = active_piece
+		var curr_piece_type = piece_type
+		var curr_piece_atlas = piece_atlas
+		
+		#clears the storage side panel and current piece
+		clear_storage_panel()
+		clear_piece()
+		
+		#swaps the active piece with the stored pieces
+		active_piece = stored_piece
+		piece_type = stored_piece_type
+		piece_atlas = stored_piece_atlas
+		
+		#replaces the stored pieces
+		stored_piece = curr_piece
+		stored_piece_type = curr_piece_type
+		stored_piece_atlas = curr_piece_atlas
+		
+		steps = [0,0,0]
+		cur_pos = start_pos
+		draw_piece(active_piece, cur_pos, piece_atlas)
+		draw_piece(stored_piece, Vector2i(15,13), stored_piece_atlas) #draws current piece to storage
+
 func draw_piece(piece, pos , atlas):
 	for i in piece:
 		set_cell(active_layer, pos + i, tile_id, atlas)
@@ -237,5 +299,5 @@ func check_game_over():
 	for i in active_piece:
 		if not is_free(i + cur_pos):
 			land_piece()
-			$HUD.get_node("GameOverLabel").Show()
+			$HUD.get_node("GameOverLabel").show()
 			game_running = false
