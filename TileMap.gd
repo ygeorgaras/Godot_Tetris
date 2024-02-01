@@ -66,6 +66,7 @@ var rotation_index : int = 0
 var active_piece : Array
 var stored_piece
 var stored_piece_type
+var can_store_piece : bool
 
 #game variables 
 var score : int
@@ -92,6 +93,7 @@ func new_game():
 	#reset variables
 	score = 0
 	speed = 1.0
+	can_store_piece = true
 	game_running = true
 	steps = [0,0,0]#0:left, 1:right, 2:down
 	$HUD.get_node("GameOverLabel").hide()
@@ -118,7 +120,7 @@ func _process(delta):
 			steps[2] += 10
 		if Input.is_action_just_released("ui_up"):
 			rotate_piece()
-		if Input.is_action_just_released("store_shape"):
+		if Input.is_action_just_released("store_shape") and can_store_piece == true:
 			store_shape()
 
 		#apply downward movement each frames
@@ -167,6 +169,7 @@ func move_piece(dir):
 			piece_atlas = next_piece_atlas
 			next_piece_type = pick_piece()
 			next_piece_atlas = Vector2i(shapes_full.find(next_piece_type), 0)
+			can_store_piece = true
 			clear_next_panel()
 			create_piece()
 			check_game_over()
@@ -191,6 +194,7 @@ func rotate_piece():
 		draw_piece(active_piece, cur_pos, piece_atlas)
 	
 func store_shape():
+	can_store_piece = false
 	if stored_piece == null:
 		#stores and draws piece in stored piece
 		stored_piece = active_piece
